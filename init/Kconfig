@@ -426,6 +426,31 @@ config LOG_BUF_SHIFT
 config HAVE_UNSTABLE_SCHED_CLOCK
 	bool
 
+menuconfig SCHED_HET
+	boolean "Heterogeneous Scheduler support"
+	help
+	  This option enables the scheduling support for heterogeneous
+	  components in the system, like graficscards or FPGAs.
+
+	  Say N if unsure.
+
+if SCHED_HET
+
+config SCHED_HET_QUEUE_LIMIT
+	depends on SCHED_HET
+	int "Queue limit (-1 => unlimited)"
+	range -1 9999999999
+
+config SCHED_HET_FIXED_TASK_SET
+	depends on SCHED_HET
+	boolean "Fixed task set"
+
+config SCHED_HET_APPL_GRANULARITY
+	depends on SCHED_HET
+	boolean "Application controlled granularity"
+
+endif
+
 menuconfig CGROUPS
 	boolean "Control Group support"
 	help
