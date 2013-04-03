@@ -336,3 +336,13 @@ ENTRY(sys_call_table)
 	.long sys_pwritev
 	.long sys_rt_tgsigqueueinfo	/* 335 */
 	.long sys_perf_event_open
+#ifdef CONFIG_SCHED_HET
+	.long sys_computing_unit_alloc
+	.long sys_computing_unit_rerequest
+	.long sys_computing_unit_free
+	.long sys_computing_unit_add /* 340 */
+	.long sys_computing_unit_del
+	.long sys_computing_unit_iterate
+	.long sys_computing_unit_details
+	.long sys_computing_unit_set
+#endif

@@ -661,6 +661,24 @@ __SYSCALL(__NR_pwritev, sys_pwritev)
 __SYSCALL(__NR_rt_tgsigqueueinfo, sys_rt_tgsigqueueinfo)
 #define __NR_perf_event_open			298
 __SYSCALL(__NR_perf_event_open, sys_perf_event_open)
+#ifdef CONFIG_SCHED_HET
+#define __NR_computing_unit_alloc		299
+__SYSCALL(__NR_computing_unit_alloc, sys_computing_unit_alloc)
+#define __NR_computing_unit_rerequest		300
+__SYSCALL(__NR_computing_unit_rerequest, sys_computing_unit_rerequest)
+#define __NR_computing_unit_free		301
+__SYSCALL(__NR_computing_unit_free, sys_computing_unit_free)
+#define __NR_computing_unit_add			302
+__SYSCALL(__NR_computing_unit_add, sys_computing_unit_add)
+#define __NR_computing_unit_del			303
+__SYSCALL(__NR_computing_unit_del, sys_computing_unit_del)
+#define __NR_computing_unit_iterate		304
+__SYSCALL(__NR_computing_unit_iterate, sys_computing_unit_iterate)
+#define __NR_computing_unit_details		305
+__SYSCALL(__NR_computing_unit_details, sys_computing_unit_details)
+#define __NR_computing_unit_set			306
+__SYSCALL(__NR_computing_unit_set, sys_computing_unit_set)
+#endif
 
 #ifndef __NO_STUBS
 #define __ARCH_WANT_OLD_READDIR

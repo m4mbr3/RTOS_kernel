@@ -94,6 +94,8 @@ struct sched_param {
 
 #include <asm/processor.h>
 
+#include <linux/sched_hwaccel.h>
+
 struct exec_domain;
 struct futex_pi_state;
 struct robust_list_head;
@@ -1187,12 +1189,38 @@ struct sched_entity {
 	u64			nr_wakeups_idle;
 #endif
 
-#ifdef CONFIG_FAIR_GROUP_SCHED
-	struct sched_entity	*parent;
+#if (defined CONFIG_FAIR_GROUP_SCHED || defined CONFIG_SCHED_HET)
 	/* rq on which this entity is (to be) queued: */
 	struct cfs_rq		*cfs_rq;
+#endif
+
+#ifdef CONFIG_FAIR_GROUP_SCHED
+	struct sched_entity	*parent;
 	/* rq "owned" by this entity/group: */
 	struct cfs_rq		*my_q;
+#endif
+#ifdef CONFIG_SCHED_HET
+	/* flag to indicate that this sched_entity is representing a hardware task */
+	int is_hardware_task;
+	/* flag to show the task that is holds the cu-lock */
+	int semaphore_up;
+	/* flag to show the task that is has to migrate to another cu */
+	int need_migrate;
+	
+	/* 
+	 * the granularity with which the task should be scheduled on the currently
+	 * assigned computing unit. This is needed because a task can be e.g. switched
+	 * more often on a cpu than on a gpu
+	 */
+	u64 task_granularity_nsec;
+	
+	/* Data structures for hardware task migration */
+	int current_affinity;
+	unsigned long offerer;
+	int offered_affinity;
+	
+	/* to reevaluate the affinity */
+	struct meta_info mi;
 #endif
 };
 
@@ -1233,6 +1261,9 @@ struct task_struct {
 	unsigned int rt_priority;
 	const struct sched_class *sched_class;
 	struct sched_entity se;
+#ifdef CONFIG_SCHED_HET
+	struct sched_entity hwse;
+#endif
 	struct sched_rt_entity rt;
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS

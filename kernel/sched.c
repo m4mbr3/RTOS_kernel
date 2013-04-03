@@ -365,7 +365,7 @@ struct cfs_rq {
 
 	unsigned int nr_spread_over;
 
-#ifdef CONFIG_FAIR_GROUP_SCHED
+#if (defined CONFIG_FAIR_GROUP_SCHED || defined CONFIG_SCHED_HET)
 	struct rq *rq;	/* cpu runqueue to which this cfs_rq is attached */
 
 	/*
@@ -403,6 +403,13 @@ struct cfs_rq {
 	 */
 	unsigned long rq_weight;
 #endif
+#endif
+#ifdef CONFIG_SCHED_HET
+	struct semaphore access_mutex;
+
+	spinlock_t		lock;
+	unsigned int	count;
+	unsigned int	maxcount;
 #endif
 };
 
@@ -1792,20 +1799,6 @@ static void cfs_rq_set_shares(struct cfs_rq *cfs_rq, unsigned long shares)
 static void calc_load_account_active(struct rq *this_rq);
 static void update_sysctl(void);
 
-static inline void __set_task_cpu(struct task_struct *p, unsigned int cpu)
-{
-	set_task_rq(p, cpu);
-#ifdef CONFIG_SMP
-	/*
-	 * After ->cpu is set up to a new value, task_rq_lock(p, ...) can be
-	 * successfuly executed on another CPU. We must ensure that updates of
-	 * per-task data have been completed by this moment.
-	 */
-	smp_wmb();
-	task_thread_info(p)->cpu = cpu;
-#endif
-}
-
 #ifdef CONFIG_IRQ_TIME_ACCOUNTING
 
 /*
@@ -1894,9 +1887,14 @@ static void sched_irq_time_avg_update(struct rq *rq, u64 curr_irq_time) { }
 
 #endif
 
+static inline void __set_task_cpu(struct task_struct *p, unsigned int cpu);
 #include "sched_stats.h"
 #include "sched_idletask.c"
 #include "sched_fair.c"
+#ifdef CONFIG_SCHED_HET
+#include "sched_fair_hw.c"
+#include "sched_hwaccel.c"
+#endif
 #include "sched_rt.c"
 #ifdef CONFIG_SCHED_DEBUG
 # include "sched_debug.c"
@@ -1905,6 +1903,23 @@ static void sched_irq_time_avg_update(struct rq *rq, u64 curr_irq_time) { }
 #define sched_class_highest (&rt_sched_class)
 #define for_each_class(class) \
    for (class = sched_class_highest; class; class = class->next)
+
+static inline void __set_task_cpu(struct task_struct *p, unsigned int cpu)
+{
+#ifdef CONFIG_SCHED_HET
+	set_task_rq_hw(p, cpu);
+#endif
+	set_task_rq(p, cpu);
+#ifdef CONFIG_SMP
+	/*
+	 * After ->cpu is set up to a new value, task_rq_lock(p, ...) can be
+	 * successfuly executed on another CPU. We must ensure that updates of
+	 * per-task data have been completed by this moment.
+	 */
+	smp_wmb();
+	task_thread_info(p)->cpu = cpu;
+#endif
+}
 
 static void inc_nr_running(struct rq *rq)
 {
@@ -2685,6 +2700,19 @@ static void __sched_fork(struct task_struct *p)
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	INIT_HLIST_HEAD(&p->preempt_notifiers);
 #endif
+
+#ifdef CONFIG_SCHED_HET
+	p->hwse.cfs_rq = NULL;
+	p->hwse.offerer = CU_INVALID_HANDLE;
+#endif
+
+	/*
+	 * We mark the process as running here, but have not actually
+	 * inserted it onto the runqueue yet. This guarantees that
+	 * nobody will actually run it, and a signal or other external
+	 * event cannot wake it up and insert it on the runqueue either.
+	 */
+	p->state = TASK_RUNNING;
 }
 
 /*
@@ -9556,6 +9584,11 @@ static void init_cfs_rq(struct cfs_rq *cfs_rq, struct rq *rq)
 	cfs_rq->rq = rq;
 #endif
 	cfs_rq->min_vruntime = (u64)(-(1LL << 20));
+
+#ifdef CONFIG_SCHED_HET
+	cfs_rq->nr_running = 0;
+	cfs_sema_init(cfs_rq, -1);
+#endif
 }
 
 static void init_rt_rq(struct rt_rq *rt_rq, struct rq *rq)
@@ -9697,6 +9730,16 @@ void __init sched_init(void)
 		}
 #endif /* CONFIG_CPUMASK_OFFSTACK */
 	}
+
+#ifdef CONFIG_SCHED_HET
+	for (i = 0; i < CU_NUMOF_TYPES; ++i) {
+		INIT_LIST_HEAD(&computing_units.list_of_cus[i]);
+		/* computing_units.current_ids[i] = -1; */
+		computing_units.current_id = -1;
+	}
+	init_MUTEX(&computing_units.access_mutex);
+	computing_units_cpus_init();
+#endif
 
 #ifdef CONFIG_SMP
 	init_defrootdomain();

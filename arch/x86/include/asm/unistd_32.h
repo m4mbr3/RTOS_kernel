@@ -342,6 +342,16 @@
 #define __NR_pwritev		334
 #define __NR_rt_tgsigqueueinfo	335
 #define __NR_perf_event_open	336
+#ifdef CONFIG_SCHED_HET
+#define __NR_computing_unit_alloc	337
+#define __NR_computing_unit_rerequest	338
+#define __NR_computing_unit_free	339
+#define __NR_computing_unit_add		340
+#define __NR_computing_unit_del		341
+#define __NR_computing_unit_iterate	342
+#define __NR_computing_unit_details	343
+#define __NR_computing_unit_set		344
+#endif
 
 #ifdef __KERNEL__
 
